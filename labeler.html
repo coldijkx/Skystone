@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Skystones — Spike Labeler (Separated Layout)</title>
+<style>
+  :root{ --ink:#e9f1ff; --muted:#9aa3b5; --accent:#ffd166; --bg:#0b1220; }
+  *{box-sizing:border-box}
+  body{margin:0;background:#0b1220;color:var(--ink);font-family:Inter,Segoe UI,Roboto,Arial,sans-serif}
+  header{padding:14px 18px;border-bottom:1px solid #ffffff14;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  h1{margin:0;font-size:18px;color:var(--accent)}
+  .muted{color:var(--muted)}
+
+  /* Two-column layout: image (left) and controls (right) */
+  main{display:grid;grid-template-columns:minmax(420px,1fr) 420px;gap:16px;padding:16px}
+  .card{background:#0f172a;border:1px solid #ffffff1a;border-radius:12px;padding:12px}
+
+  /* Left: image viewer — nothing overlaps this area */
+  .viewer{display:flex;flex-direction:column;gap:10px}
+  .stageWrap{position:relative; width:100%; aspect-ratio:1/1; overflow:hidden; border-radius:10px; background:#0a1122;
+             border:1px solid #ffffff12}
+  .stage{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(1); cursor:grab}
+  .stage:active{cursor:grabbing}
+  .stage img{display:block; max-width:none; max-height:none; user-select:none; -webkit-user-drag:none}
+  .zoomRow{display:flex; gap:8px; align-items:center}
+  .zoomRow input[type="range"]{width:100%}
+  .pill{padding:8px 10px;border-radius:10px;background:#ffffff12;border:1px solid #ffffff1c}
+
+  /* Right: controls column (entirely separate from image) */
+  .controls{display:flex;flex-direction:column;gap:12px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  input[type="text"]{background:#0b1428;border:1px solid #ffffff22;color:var(--ink);border-radius:8px;padding:8px 10px;width:100%}
+  .btn{cursor:pointer;background:#182744;border:1px solid #ffffff24;color:var(--ink);padding:10px 12px;border-radius:10px}
+  .btn:hover{filter:brightness(1.08)}
+  .btn.primary{background:linear-gradient(90deg,#fff5d0,#ffd166);color:#071120;border-color:#0001}
+  .grid4{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .group{background:#0b1428;border:1px solid #ffffff18;border-radius:10px;padding:10px}
+  .group h4{margin:0 0 8px 0; font-size:13px; color:var(--muted)}
+  .numbers{display:flex;gap:8px;flex-wrap:wrap}
+  .numbers button{width:40px;height:40px;border-radius:10px;border:1px solid #ffffff24;background:#0d1a33;color:var(--ink);cursor:pointer;font-weight:700}
+  .numbers button.active{background:#ffd166;color:#071120;border-color:#0001}
+
+  .stats{display:flex;gap:10px;align-items:center}
+  .progress{height:8px;background:#0f1a2f;border-radius:999px;overflow:hidden;flex:1}
+  .bar{height:100%;width:0;background:#43d9a3}
+
+  .kbd{border:1px solid #ffffff44;border-bottom-width:3px;padding:0 6px;border-radius:6px}
+  .tips{color:var(--muted);font-size:13px;line-height:1.6}
+  .sep{height:1px;background:#ffffff14;margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>Skystones — Spike Labeler</h1>
+  <div class="muted">Image on the left • Controls on the right • Nothing overlaps the art.</div>
+</header>
+
+<main>
+  <!-- LEFT: IMAGE PANEL -->
+  <section class="card viewer">
+    <div class="stageWrap" id="stageWrap">
+      <div class="stage" id="stage">
+        <img id="img" alt="">
+      </div>
+    </div>
+    <div class="zoomRow">
+      <span class="pill">Zoom</span>
+      <input id="zoom" type="range" min="1" max="6" step="0.1" value="2">
+      <button class="btn" id="fit">Fit</button>
+      <span class="pill" id="zoomVal">200%</span>
+    </div>
+  </section>
+
+  <!-- RIGHT: CONTROLS PANEL -->
+  <section class="card controls">
+    <div class="row">
+      <input id="name" type="text" placeholder="Stone name (optional)">
+    </div>
+
+    <div class="grid4">
+      <div class="group">
+        <h4>Top</h4>
+        <div class="numbers" data-side="top"></div>
+      </div>
+      <div class="group">
+        <h4>Right</h4>
+        <div class="numbers" data-side="right"></div>
+      </div>
+      <div class="group">
+        <h4>Bottom</h4>
+        <div class="numbers" data-side="bottom"></div>
+      </div>
+      <div class="group">
+        <h4>Left</h4>
+        <div class="numbers" data-side="left"></div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="row">
+      <button class="btn" id="prev">◀ Prev</button>
+      <span class="pill" id="idx">1 / ?</span>
+      <button class="btn" id="next">Next ▶</button>
+      <button class="btn" id="skip">Skip empty</button>
+      <button class="btn primary" id="download">Download stones.js</button>
+    </div>
+
+    <div class="row stats">
+      <div class="progress"><div id="bar" class="bar"></div></div>
+      <span class="pill" id="doneCount">0 / 0</span>
+    </div>
+
+    <div class="tips">
+      <b>Shortcuts</b>: <span class="kbd">◀/▶</span> navigate • <span class="kbd">0–4</span> = Top •
+      <span class="kbd">Q–T</span> = Right • <span class="kbd">Z–B</span> = Bottom •
+      <span class="kbd">J–;</span> = Left • Wheel to zoom • Drag to pan
+    </div>
+  </section>
+</main>
+
+<!-- Load your generated manifest -->
+<script src="SkystonesAssets/stones.js"></script>
+<script>
+/* Load & normalize data */
+const ALL = (window.ALL_STONES||[]).map(s=>({
+  id:s.id, file:s.file, name:s.name||s.id,
+  sides:{top:s.sides?.top??null,right:s.sides?.right??null,bottom:s.sides?.bottom??null,left:s.sides?.left??null}
+}));
+let i=0;
+
+/* Viewer refs */
+const img = document.getElementById('img');
+const stage = document.getElementById('stage');
+const wrap = document.getElementById('stageWrap');
+const zoom = document.getElementById('zoom');
+const zoomVal = document.getElementById('zoomVal');
+
+/* Controls refs */
+const nameInput = document.getElementById('name');
+const idx = document.getElementById('idx');
+const bar = document.getElementById('bar');
+const doneCount = document.getElementById('doneCount');
+
+/* Build numeric pickers (0–4) for each side, in the right column */
+const sides = ['top','right','bottom','left'];
+const buckets = {};
+document.querySelectorAll('.numbers').forEach(div=>{
+  const side = div.dataset.side;
+  buckets[side]=div;
+  for(let n=0;n<=4;n++){
+    const b=document.createElement('button');
+    b.textContent=n;
+    b.addEventListener('click',()=>setSide(side,n));
+    div.appendChild(b);
+  }
+});
+
+function setSide(side,n){ ALL[i].sides[side]=n; renderActive(); updateProgress(); }
+function setName(v){ ALL[i].name=v; }
+
+function renderActive(){
+  sides.forEach(side=>{
+    const n=ALL[i].sides[side];
+    buckets[side].querySelectorAll('button').forEach(b=>{
+      b.classList.toggle('active', Number(b.textContent)===Number(n));
+    });
+  });
+}
+
+function updateProgress(){
+  const done = ALL.filter(s => sides.every(k => s.sides[k]!=null)).length;
+  bar.style.width = (100*done/ALL.length).toFixed(1)+'%';
+  doneCount.textContent = done + ' / ' + ALL.length;
+}
+
+function load(k){
+  i = Math.max(0, Math.min(k, ALL.length-1));
+  const s = ALL[i];
+  img.src = s.file;                           // Only image in the left panel (nothing covers it)
+  nameInput.value = s.name || '';
+  idx.textContent = (i+1)+' / '+ALL.length;
+  renderActive();
+  updateProgress();
+  resetView();
+}
+
+/* Navigation */
+document.getElementById('prev').onclick = ()=> load(i-1);
+document.getElementById('next').onclick = ()=> load(i+1);
+document.getElementById('skip').onclick = ()=>{
+  let j=i+1, loops=0;
+  while(loops<ALL.length){
+    const s = ALL[j%ALL.length];
+    if(sides.some(k=>s.sides[k]==null)){ load(j%ALL.length); return; }
+    j++; loops++;
+  }
+  load(i+1);
+};
+document.getElementById('download').onclick = ()=>{
+  const payload = "window.ALL_STONES = " + JSON.stringify(ALL, null, 2) + ";\n";
+  const blob = new Blob([payload], {type:'application/javascript'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'stones.js';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+};
+
+/* Name input */
+nameInput.addEventListener('input', e=> setName(e.target.value));
+
+/* Keyboard shortcuts (no UI overlap anywhere) */
+document.addEventListener('keydown', (e)=>{
+  const k = e.key.toLowerCase();
+  if(k==='arrowleft' || k==='a'){ load(i-1); }
+  if(k==='arrowright'|| k==='d'){ load(i+1); }
+  if(k==='s'){ document.getElementById('skip').click(); }
+  const map = {
+    '0':['top',0],'1':['top',1],'2':['top',2],'3':['top',3],'4':['top',4],
+    'q':['right',0],'w':['right',1],'e':['right',2],'r':['right',3],'t':['right',4],
+    'z':['bottom',0],'x':['bottom',1],'c':['bottom',2],'v':['bottom',3],'b':['bottom',4],
+    'j':['left',0],'k':['left',1],'l':['left',2],';':['left',3],"'":['left',4]
+  };
+  const hit=map[k]; if(hit){ setSide(hit[0], hit[1]); }
+});
+
+/* Zoom & pan (affects only the image panel) */
+let scale = 2, ox = 0, oy = 0, dragging=false, sx=0, sy=0;
+function applyTransform(){
+  stage.style.transform = `translate(calc(50% + ${ox}px), calc(50% + ${oy}px)) scale(${scale})`;
+  zoom.value = String(scale); zoomVal.textContent = Math.round(scale*100)+'%';
+}
+function resetView(){ scale=2; ox=oy=0; applyTransform(); }
+zoom.addEventListener('input', e=>{ scale = Number(e.target.value)||1; applyTransform(); });
+document.getElementById('fit').onclick = resetView;
+
+wrap.addEventListener('wheel', (e)=>{
+  e.preventDefault();
+  const delta = Math.sign(e.deltaY);
+  scale = Math.min(6, Math.max(1, scale - delta*0.2));
+  applyTransform();
+}, {passive:false});
+
+wrap.addEventListener('mousedown', (e)=>{ dragging=true; sx=e.clientX; sy=e.clientY; });
+window.addEventListener('mouseup', ()=> dragging=false);
+window.addEventListener('mousemove', (e)=>{
+  if(!dragging) return;
+  ox += (e.clientX - sx);
+  oy += (e.clientY - sy);
+  sx = e.clientX; sy = e.clientY;
+  applyTransform();
+});
+
+/* Init */
+load(0);
+</script>
+</body>
+</html>

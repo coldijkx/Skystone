@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Skystones — Campaign + Labeler</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="brand">SKYSTONES</div>
+    <div class="controls">
+      <button id="btnMenu" class="btn-icon" title="Main Menu">🏠</button>
+      <button id="btnMusic" class="btn-icon" title="Play/Pause Music">🎵</button>
+      <button id="btnLabelerToolbar" class="btn-icon" title="Tools">&#9881;</button>
+      <div class="vol"><input id="volumeRange" type="range" min="0" max="1" step="0.01" value="0.5" /></div>
+    </div>
+  </div>
+
+  <!-- Error banner -->
+  <div id="errorBanner" class="error hide"></div>
+
+  <!-- Main menu -->
+  <div id="view-menu" class="view active menu card">
+    <h2>Play</h2>
+    <button id="btnCampaign">Campaign</button>
+    <button id="btnLocal">Local 2P</button>
+    <button id="btnSurvival">Survival</button>
+    <button id="btnOnline">Online (beta)</button>
+    <h2 style="margin-top:16px;">Tools</h2>
+    <button id="btnCharacters">Opponent Customizer</button>
+  </div>
+
+  <!-- Campaign (map) -->
+  <div id="view-campaign" class="view">
+    <div class="campaign-head card">
+      <div class="left">
+        <h2>Campaign</h2>
+        <div class="fine">Beat a level to unlock the next. Edit your 5-stone loadout anytime.</div>
+      </div>
+      <div class="right actions">
+        <button id="btnEditLoadout" class="big ghost">Edit Loadout (5)</button>
+        <button id="btnResetCampaign" class="big">Reset Campaign</button>
+      </div>
+    </div>
+    <div id="levelMap" class="map card"></div>
+  </div>
+
+  <!-- Gameplay view -->
+  <div id="view-game" class="view">
+    <div class="game-head card">
+      <div class="left">
+        <div class="opponent">
+          <div class="avatar-wrap">
+            <img id="opponentAvatar" src="" alt="Opponent">
+          </div>
+          <div class="opponent-text">
+            <div class="opponent-name" id="opponentName">Opponent</div>
+            <h2 id="gameTitle">Battle</h2>
+            <div class="fine" id="gameSubtitle"></div>
+          </div>
+          <div class="opponent-bubble hide" id="opponentBubble">...</div>
+        </div>
+      </div>
+      <div class="right actions">
+        <button id="btnForfeit" class="big ghost">Forfeit</button>
+        <button id="btnRestart" class="big">Restart</button>
+        <button id="btnBackToMap" class="big">Back</button>
+      </div>
+    </div>
+
+    <div class="layout-row">
+      <div class="panel">
+        <h3>Your Stones</h3>
+        <div id="deck1" class="deck"></div>
+      </div>
+
+      <div id="board" class="board"></div>
+
+      <div class="panel">
+        <h3>Enemy</h3>
+        <div id="deck2" class="deck"></div>
+      </div>
+    </div>
+
+    <div class="hud">
+      <div id="turn" class="pill"></div>
+      <div id="score" class="pill"></div>
+      <div id="turnBanner" class="turn-banner hide">Your Move</div>
+    </div>
+
+    <div id="resultBanner" class="result card hide">
+      <div class="result-text">
+        <h3 id="resultTitle">Result</h3>
+        <div id="resultDetails" class="fine"></div>
+      </div>
+      <div class="result-actions">
+        <button id="resultPrimary" class="big">Next Level</button>
+        <button id="resultSecondary" class="big ghost">Back to Map</button>
+        <button id="resultTertiary" class="big ghost">Play Again</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Online -->
+  <div id="view-online" class="view">
+    <div class="card online-card">
+      <h2>Online Multiplayer (beta)</h2>
+      <p>Create a private room and share the code, or join an existing one.</p>
+      <div class="online-actions">
+        <button id="btnOnlineCreate" class="big">Create Room</button>
+        <div class="join-row">
+          <input id="onlineRoomInput" class="input" placeholder="Room code" maxlength="6" />
+          <button id="btnOnlineJoin" class="big ghost">Join Room</button>
+        </div>
+      </div>
+      <div id="onlineStatus" class="status">Not connected.</div>
+      <div id="onlineRoomInfo" class="status"></div>
+    </div>
+  </div>
+
+  <!-- Opponent Customizer -->
+  <div id="view-characters" class="view">
+    <div class="card character-head">
+      <h2>Campaign Opponents</h2>
+      <div class="fine">Set names, avatars, and dialogue for each level. Values save to your browser.</div>
+    </div>
+    <div id="characterGrid" class="character-grid card"></div>
+  </div>
+
+  <!-- Survival -->
+  <div id="view-survival" class="view">
+    <div class="card survival-head">
+      <div>
+        <h2>Survival Mode</h2>
+        <div class="fine">Keep winning against escalating enemies. Lose once and your streak resets.</div>
+      </div>
+      <div class="survival-actions">
+        <button id="btnStartSurvival" class="big">Start Run</button>
+        <button id="btnResetSurvival" class="big ghost">Reset High Scores</button>
+      </div>
+    </div>
+    <div class="card survival-stats">
+      <div>
+        <div class="label">Current Streak</div>
+        <div id="survivalStreak" class="value">0</div>
+      </div>
+      <div>
+        <div class="label">Best Streak</div>
+        <div id="survivalBest" class="value">0</div>
+      </div>
+    </div>
+    <div class="card survival-board">
+      <h3>Recent Runs</h3>
+      <div id="survivalHistory" class="history-list"></div>
+    </div>
+  </div>
+
+  <!-- Labeler -->
+  <div id="view-labeler" class="view">
+    <div class="card labeler-head">
+      <h2>Labeler: Spikes + Rarity + File Paths</h2>
+      <div class="fine">Tip: put your images in <code>assets/stones/</code> first. Then fill values and Export Manifest.</div>
+      <div class="labeler-actions">
+        <input id="labelerFiles" type="file" accept="image/*" multiple />
+        <button id="labelerLoadCurrent" class="big ghost">Load From Current Manifest</button>
+        <button id="labelerAddBlank" class="big ghost">Add Blank Row</button>
+        <button id="labelerExportJS" class="big">Export Manifest (JS)</button>
+      </div>
+    </div>
+
+    <div id="labelerGrid" class="labeler-grid card"></div>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal" class="modal hide">
+    <div class="modal-content">
+      <h3 id="modalTitle">Message</h3>
+      <div id="modalBody"></div>
+      <div class="modal-actions">
+        <button id="modalTertiary" class="big ghost" hidden>Later</button>
+        <button id="modalSecondary" class="big ghost">Close</button>
+        <button id="modalPrimary" class="big">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loadout Picker -->
+  <div id="loadoutModal" class="modal hide">
+    <div class="modal-content">
+      <h3 id="loadoutTitle">Choose 5 Stones</h3>
+      <div id="loadoutCount" class="loadout-count">Selected 0/5</div>
+      <div id="loadoutGrid" class="loadout-grid"></div>
+      <div class="modal-actions">
+        <button id="loadoutCancel" class="big ghost">Cancel</button>
+        <button id="loadoutSave" class="big">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Survival Draft -->
+  <div id="survivalDraftModal" class="modal hide">
+    <div class="modal-content">
+      <h3>Survival Draft</h3>
+      <div class="fine" id="survivalDraftInfo">Select 5 stones for this run.</div>
+      <div id="survivalDraftGrid" class="loadout-grid"></div>
+      <div class="modal-actions">
+        <button id="survivalDraftCancel" class="big ghost">Cancel</button>
+        <button id="survivalDraftLock" class="big">Lock In</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manifest (if present) injects window.ALL_STONES -->
+  <script src="assets/stones.manifest.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
+
