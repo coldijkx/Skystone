@@ -124,17 +124,30 @@
     q("#btnMenu")?.addEventListener("click", ()=> showView("menu"));
     audio = new Audio("assets/audio/theme.mp3"); audio.loop=true; audio.volume=0.5;
     q("#btnMusic")?.addEventListener("click", async()=>{ try{ if(audio.paused) await audio.play(); else audio.pause(); }catch{} });
-    q("#btnLabelerToolbar")?.addEventListener("click", ()=>{
-      const choice = prompt("Type 'labeler' or 'opponents' to open a tool:");
-      if(!choice) return;
-      const normalized = choice.trim().toLowerCase();
-      if(normalized.startsWith("label")){
-        requestLabelerAccess();
-      }else if(normalized.startsWith("opponent") || normalized.startsWith("char")){
-        requestCharacterAccess();
-      }else{
-        alert("Unknown option. Try typing 'labeler' or 'opponents'.");
-      }
+    const toolsMenu = q("#toolbarToolsMenu");
+    const toolsButton = q("#btnLabelerToolbar");
+    const closeToolsMenu = ()=> toolsMenu?.classList.remove("show");
+    toolsButton?.addEventListener("click", (ev)=>{
+      ev.preventDefault();
+      ev.stopPropagation();
+      toolsMenu?.classList.toggle("show");
+    });
+    q("#toolbarToolLabeler")?.addEventListener("click", ()=>{
+      closeToolsMenu();
+      requestLabelerAccess();
+    });
+    q("#toolbarToolOpponents")?.addEventListener("click", ()=>{
+      closeToolsMenu();
+      requestCharacterAccess();
+    });
+    document.addEventListener("click", (ev)=>{
+      if(!toolsMenu?.classList.contains("show")) return;
+      if(ev.target===toolsButton) return;
+      if(toolsMenu.contains(ev.target)) return;
+      closeToolsMenu();
+    });
+    document.addEventListener("keydown", (ev)=>{
+      if(ev.key==="Escape") closeToolsMenu();
     });
     q("#volumeRange")?.addEventListener("input", e=> audio.volume = Number(e.target.value));
     audio.play().catch(()=>{ /* click dYZ? to start if blocked */ });
@@ -807,10 +820,36 @@
     });
   }
   function updateAll(){
-    const hideEnemy = (gameMode==="campaign" || gameMode==="online");
-    renderDeck("deck1", P1.deck, { selectable: current===P1 });
-    renderDeck("deck2", P2.deck, { hidden: hideEnemy });
-    renderBoard(); updateHUD(); init3DTilt();
+    const trayMode = (gameMode==="campaign" || gameMode==="survival");
+    const hideEnemy = (gameMode==="campaign" || gameMode==="online" || gameMode==="survival");
+    const tray = q("#playerTray");
+    const panelYour = q("#panelYour");
+    const panelEnemy = q("#panelEnemy");
+    const trayDeck = q("#deckTray");
+    const enemyDeckEl = q("#deck2");
+
+    if(trayMode){
+      if(tray) tray.classList.remove("hide");
+      if(panelYour) panelYour.classList.add("hide");
+      renderDeck("deckTray", P1.deck, { selectable: current===P1 });
+    }else{
+      if(tray) tray.classList.add("hide");
+      if(panelYour) panelYour.classList.remove("hide");
+      renderDeck("deck1", P1.deck, { selectable: current===P1 });
+      if(trayDeck) trayDeck.innerHTML="";
+    }
+
+    if(hideEnemy){
+      if(panelEnemy) panelEnemy.classList.add("hide");
+      if(enemyDeckEl) enemyDeckEl.innerHTML="";
+    }else{
+      if(panelEnemy) panelEnemy.classList.remove("hide");
+      renderDeck("deck2", P2.deck, { hidden:false });
+    }
+
+    renderBoard();
+    updateHUD();
+    init3DTilt();
   }
 
   /* --- Mechanics --- */
