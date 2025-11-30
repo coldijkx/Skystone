@@ -36,6 +36,14 @@
   const SIZE=3;
   const LABELER_PASSWORD = "colliniscool8";
   const ONLINE_SERVER_URL = window.ONLINE_SERVER_URL || "ws://localhost:3001";
+  const ONLINE_SERVER_LABEL = (()=> {
+    try{
+      const parsed = new URL(ONLINE_SERVER_URL);
+      return `${parsed.protocol}//${parsed.host}`;
+    }catch{
+      return ONLINE_SERVER_URL;
+    }
+  })();
   const MAX_LEVELS=15;
   let board, P1, P2, current, selected=null;
   let lastEnemyDeckEntries = [];
@@ -116,17 +124,30 @@
     q("#btnMenu")?.addEventListener("click", ()=> showView("menu"));
     audio = new Audio("assets/audio/theme.mp3"); audio.loop=true; audio.volume=0.5;
     q("#btnMusic")?.addEventListener("click", async()=>{ try{ if(audio.paused) await audio.play(); else audio.pause(); }catch{} });
-    q("#btnLabelerToolbar")?.addEventListener("click", ()=>{
-      const choice = prompt("Type 'labeler' or 'opponents' to open a tool:");
-      if(!choice) return;
-      const normalized = choice.trim().toLowerCase();
-      if(normalized.startsWith("label")){
-        requestLabelerAccess();
-      }else if(normalized.startsWith("opponent") || normalized.startsWith("char")){
-        requestCharacterAccess();
-      }else{
-        alert("Unknown option. Try typing 'labeler' or 'opponents'.");
-      }
+    const toolsMenu = q("#toolbarToolsMenu");
+    const toolsButton = q("#btnLabelerToolbar");
+    const closeToolsMenu = ()=> toolsMenu?.classList.remove("show");
+    toolsButton?.addEventListener("click", (ev)=>{
+      ev.preventDefault();
+      ev.stopPropagation();
+      toolsMenu?.classList.toggle("show");
+    });
+    q("#toolbarToolLabeler")?.addEventListener("click", ()=>{
+      closeToolsMenu();
+      requestLabelerAccess();
+    });
+    q("#toolbarToolOpponents")?.addEventListener("click", ()=>{
+      closeToolsMenu();
+      requestCharacterAccess();
+    });
+    document.addEventListener("click", (ev)=>{
+      if(!toolsMenu?.classList.contains("show")) return;
+      if(ev.target===toolsButton) return;
+      if(toolsMenu.contains(ev.target)) return;
+      closeToolsMenu();
+    });
+    document.addEventListener("keydown", (ev)=>{
+      if(ev.key==="Escape") closeToolsMenu();
     });
     q("#volumeRange")?.addEventListener("input", e=> audio.volume = Number(e.target.value));
     audio.play().catch(()=>{ /* click dYZ? to start if blocked */ });
@@ -524,7 +545,8 @@
     setOpponentVisual(null);
     ensureOnlineSocket();
     const msg = onlineSession.connected ? "Connected. Create or join a room." : "Connecting...";
-    setOnlineStatus(msg, "");
+    const serverText = ONLINE_SERVER_LABEL ? `Server: ${ONLINE_SERVER_LABEL}` : "";
+    setOnlineStatus(msg, serverText);
   }
   function setOnlineStatus(message, roomText=""){
     const statusEl=q("#onlineStatus"); if(statusEl) statusEl.textContent=message||"";
@@ -540,24 +562,26 @@
       const ws=new WebSocket(ONLINE_SERVER_URL);
       onlineSession.ws=ws;
       onlineSession.connected=false;
-      setOnlineStatus("Connecting to server...");
+      const serverText = ONLINE_SERVER_LABEL ? `Server: ${ONLINE_SERVER_LABEL}` : "";
+      setOnlineStatus("Connecting to server...", serverText);
       ws.onopen=()=>{
         onlineSession.connected=true;
-        setOnlineStatus("Connected. Create or join a room.");
+        setOnlineStatus("Connected. Create or join a room.", serverText);
       };
       ws.onmessage=(ev)=> handleOnlineMessage(ev);
-      ws.onerror=()=> setOnlineStatus("Connection error. Retrying...");
+      ws.onerror=()=> setOnlineStatus("Connection error. Retrying...", serverText);
       ws.onclose=()=>{
         onlineSession.ws=null;
         onlineSession.connected=false;
-        setOnlineStatus("Disconnected from server.");
+        setOnlineStatus("Disconnected from server.", serverText);
         if(onlineSession.active){
           presentOutcome({title:"Connection Lost",details:"The online match ended because the connection dropped.", primary:{label:"Back to Lobby", action:openOnlineLobby}});
           exitOnlineMatch(false);
         }
       };
     }catch(err){
-      setOnlineStatus("Unable to connect to server.");
+      const serverText = ONLINE_SERVER_LABEL ? `Server: ${ONLINE_SERVER_LABEL}` : "";
+      setOnlineStatus("Unable to connect to server.", serverText);
     }
   }
   function handleOnlineMessage(ev){
@@ -796,10 +820,36 @@
     });
   }
   function updateAll(){
-    const hideEnemy = (gameMode==="campaign" || gameMode==="online");
-    renderDeck("deck1", P1.deck, { selectable: current===P1 });
-    renderDeck("deck2", P2.deck, { hidden: hideEnemy });
-    renderBoard(); updateHUD(); init3DTilt();
+    const trayMode = (gameMode==="campaign" || gameMode==="survival");
+    const hideEnemy = (gameMode==="campaign" || gameMode==="online" || gameMode==="survival");
+    const tray = q("#playerTray");
+    const panelYour = q("#panelYour");
+    const panelEnemy = q("#panelEnemy");
+    const trayDeck = q("#deckTray");
+    const enemyDeckEl = q("#deck2");
+
+    if(trayMode){
+      if(tray) tray.classList.remove("hide");
+      if(panelYour) panelYour.classList.add("hide");
+      renderDeck("deckTray", P1.deck, { selectable: current===P1 });
+    }else{
+      if(tray) tray.classList.add("hide");
+      if(panelYour) panelYour.classList.remove("hide");
+      renderDeck("deck1", P1.deck, { selectable: current===P1 });
+      if(trayDeck) trayDeck.innerHTML="";
+    }
+
+    if(hideEnemy){
+      if(panelEnemy) panelEnemy.classList.add("hide");
+      if(enemyDeckEl) enemyDeckEl.innerHTML="";
+    }else{
+      if(panelEnemy) panelEnemy.classList.remove("hide");
+      renderDeck("deck2", P2.deck, { hidden:false });
+    }
+
+    renderBoard();
+    updateHUD();
+    init3DTilt();
   }
 
   /* --- Mechanics --- */
@@ -1468,4 +1518,3 @@
   let survivalRunActive=false;
 
 })();
-
